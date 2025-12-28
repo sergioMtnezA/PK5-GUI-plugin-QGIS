@@ -1,0 +1,2 @@
+PeKa2D-v5 GUI plugin for QGIS 3  © 2025 by Sergio Martínez-Aranda is licensed under CC BY-NC-SA 4.0. 
+To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/
