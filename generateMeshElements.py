@@ -30,7 +30,9 @@ def generateMesh(mesh_type):
     # Carpeta del proyecto
     project_path = QgsProject.instance().fileName()
     project_folder = os.path.dirname(project_path)
-    geo_path = os.path.join(project_folder, "mesh.geo")
+
+    # Tomar CRS del proyecto
+    project_crs = QgsProject.instance().crs()  
 
     # Generar domain en geo 
     dom_layer = QgsProject.instance().mapLayersByName("domain")
@@ -47,6 +49,7 @@ def generateMesh(mesh_type):
         QMessageBox.critical(None, "Error", "Domain layer is empty")
         return  
     
+    geo_path = os.path.join(project_folder, "mesh.geo")
     if mesh_type == "triangle":
         generateDomainTriangleGeo(domain, geo_path)
 
@@ -88,7 +91,7 @@ def generateMesh(mesh_type):
     
     # Cargar malla en QGIS
     shp_path = os.path.join(project_folder, "mesh.shp")
-    showMesh(domain,msh_path,shp_path)
+    tools.showMesh(project_crs,msh_path,shp_path)
     
     msg=f"Mesh layer added to project"   
     log_info(msg)     
@@ -351,85 +354,6 @@ def generateMeshFromGeo(geo_path, msh_path):
 
     if process.returncode != 0:
         raise RuntimeError("Gmsh fails. Check log file")      
-
-
-
-def showMesh(layer,msh_path,shp_path):
-
-    tools.remove_layer_by_name("mesh")
-
-    mesh = meshio.read(msh_path)
-
-    points = mesh.points[:, :2]  # XY
-    triangles = mesh.cells_dict.get("triangle", [])
-    quads = mesh.cells_dict.get("quad", [])
-
-    shp_layer = QgsVectorLayer(f"Polygon?crs={layer.crs().authid()}","temp_mesh","memory")
-    pr = shp_layer.dataProvider()
-    pr.addAttributes([QgsField("id", QVariant.Int)])
-    shp_layer.updateFields()
-
-    fid = 1
-    # --- TRIÁNGULOS ---
-    for tri in triangles:
-        pts = [QgsPointXY(*points[idx]) for idx in tri]
-        feat = QgsFeature()
-        feat.setGeometry(QgsGeometry.fromPolygonXY([pts]))
-        feat.setAttributes([fid])
-        pr.addFeature(feat)
-        fid += 1
-
-    # --- QUADS ---
-    for quad in quads:
-        pts = [QgsPointXY(*points[idx]) for idx in quad]
-        feat = QgsFeature()
-        feat.setGeometry(QgsGeometry.fromPolygonXY([pts]))
-        feat.setAttributes([fid])
-        pr.addFeature(feat)
-        fid += 1
-
-    QgsVectorFileWriter.writeAsVectorFormat(
-        shp_layer,
-        shp_path,
-        "UTF-8",
-        layer.crs(),
-        "ESRI Shapefile"
-    )
-
-    # Esperar a que el SHP esté completo
-    #if not tools.wait_for_shapefile(shp_path):
-    #    raise RuntimeError("Shapefile incompleto (.shp, .shx o .dbf)")    
-
-    mesh_layer = QgsVectorLayer(shp_path, "mesh", "ogr")
-    applyMeshStyle(mesh_layer)
-    QgsProject.instance().addMapLayer(mesh_layer)
-
-
-def applyMeshStyle(mesh_layer):
-    """
-    Aplica estilo:
-      - Sin relleno
-      - Bordes verdes
-    """
-
-    # Crear símbolo base para polígonos
-    symbol = QgsFillSymbol.createSimple({})
-
-    # Capa de relleno simple
-    fill_layer = QgsSimpleFillSymbolLayer()
-    fill_layer.setFillColor(QColor(0, 0, 0, 0))  # Transparente
-    fill_layer.setStrokeColor(QColor(245, 245, 245))  # Blanco
-    fill_layer.setStrokeWidth(0.2)  # Ancho borde
-    fill_layer.setStrokeWidthUnit(QgsUnitTypes.RenderMillimeters)
-
-    symbol.changeSymbolLayer(0, fill_layer)
-
-    # Renderer
-    renderer = QgsSingleSymbolRenderer(symbol)
-    mesh_layer.setRenderer(renderer)
-
-    # Refrescar
-    mesh_layer.triggerRepaint()
 
 
 

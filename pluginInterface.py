@@ -75,7 +75,7 @@ class pluginPK5mesher:
         self.toolbar.addAction(self.action_domain)   
 
         ################ Botón REFINE
-        self.action_refine = QAction("REFLINES", self.iface.mainWindow())
+        self.action_refine = QAction("REFINE", self.iface.mainWindow())
         self.action_refine.setToolTip("Generate refinement lines")
         self.action_refine.triggered.connect(createMeshGeometry.defineRefineLines) 
         self.toolbar.addAction(self.action_refine)             
@@ -90,7 +90,7 @@ class pluginPK5mesher:
         self.action_ordering = QAction("ORDERING", self.iface.mainWindow())
         self.action_ordering.setToolTip("Optimiza ordenacion de malla")
         self.action_ordering.triggered.connect(defineMeshOrdering.getMeshConnectivity)
-        self.toolbar.addAction(self.action_ordering)
+        self.toolbar.addAction(self.action_ordering) 
 
 
     def set_mesh_type(self, mesh_type):
