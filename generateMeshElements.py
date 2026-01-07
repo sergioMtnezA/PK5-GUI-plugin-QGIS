@@ -26,7 +26,10 @@ from .messages import (
 )
 
 
-def generateMesh(mesh_type):
+def generateMesh(self):
+
+    mesh_type = self.mesh_type
+
     # Carpeta del proyecto
     project_path = QgsProject.instance().fileName()
     project_folder = os.path.dirname(project_path)
@@ -89,10 +92,12 @@ def generateMesh(mesh_type):
     log_info(msg)   
     QMessageBox.information(None, "MESHING", "Mesh MSH file generated correctly")
     
-    # Cargar malla en QGIS
+    # Generate mesh shp layer
     shp_path = os.path.join(project_folder, "mesh.shp")
-    tools.showMesh(project_crs,msh_path,shp_path)
+    generateMeshLayer(project_crs,msh_path,shp_path)
     
+    #reload mesh layer with zbed
+    reloadAndStyleMesh("idx",self.iface)
     msg=f"Mesh layer added to project"   
     log_info(msg)     
 
@@ -152,7 +157,6 @@ def generateDomainTriangleGeo(domain, geo_path):
 
                 loop_id += 1
                 surface_id += 1
-
 
                 
 def addRefineLinesGeo(refineLines,geo_path):
@@ -244,7 +248,6 @@ def addRefineLinesGeo(refineLines,geo_path):
                 Field[{fid}].FieldsList = {{{','.join(map(str, threshold_fields))}}};
                 Background Field = {fid};
                 """)
-
 
 
 def generateDomainQuadGeo(domain, geo_path):
@@ -354,6 +357,79 @@ def generateMeshFromGeo(geo_path, msh_path):
 
     if process.returncode != 0:
         raise RuntimeError("Gmsh fails. Check log file")      
+
+
+def generateMeshLayer(project_crs,msh_path,shp_path):
+
+    mesh = meshio.read(msh_path)
+
+    points = mesh.points[:, :2]  # XY
+    triangles = mesh.cells_dict.get("triangle", [])
+    quads = mesh.cells_dict.get("quad", [])
+
+    shp_layer = QgsVectorLayer(f"Polygon?crs={project_crs.authid()}","temp_mesh","memory")
+    pr = shp_layer.dataProvider()
+    pr.addAttributes([QgsField("idx", QVariant.Int)])
+    shp_layer.updateFields()
+
+    fid = 0 # Memory index
+    # --- TRIÁNGULOS ---
+    for tri in triangles:
+        pts = [QgsPointXY(*points[idx]) for idx in tri]
+        feat = QgsFeature()
+        feat.setGeometry(QgsGeometry.fromPolygonXY([pts]))
+        feat.setAttributes([fid])
+        pr.addFeature(feat)
+        fid += 1
+
+    # --- QUADS ---
+    for quad in quads:
+        pts = [QgsPointXY(*points[idx]) for idx in quad]
+        feat = QgsFeature()
+        feat.setGeometry(QgsGeometry.fromPolygonXY([pts]))
+        feat.setAttributes([fid])
+        pr.addFeature(feat)
+        fid += 1
+
+    QgsVectorFileWriter.writeAsVectorFormat(
+        shp_layer,
+        shp_path,
+        "UTF-8",
+        project_crs,
+        "ESRI Shapefile"
+    )
+
+
+def reloadAndStyleMesh(var,iface):
+    """
+    Recarga la capa de malla y aplica simbología graduada por zbed
+    """
+    tools.remove_layer_by_name("mesh")
+    tools.remove_layer_by_name("mesh_v2")
+
+    project_folder = os.path.dirname(QgsProject.instance().fileName())
+    mesh_path = os.path.join(project_folder, "mesh.shp")
+    mesh = QgsVectorLayer(mesh_path, "mesh", "ogr")
+    if not mesh.isValid():
+        log_error("Domain mesh not found or invalid")
+        return
+
+    if var not in [f.name() for f in mesh.fields()]:
+        raise RuntimeError(f"Field {var} does not exist in mesh")
+
+    # --- Renderer graduado ---
+    #renderer = tools.createGraduatedRenderer(mesh, var, n_classes=9)
+    renderer = tools.createContinuousRenderer(mesh, var, n_classes=9)
+    #ramp_name="Terrain_color"
+    #xml_style_path=r"C:\Users\marti\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\gmshMesherPK5\styles\terrain_qgis.xml"
+    #renderer = tools.createContinuousRenderer(mesh, var, xml_style_path, ramp_name, n_classes=9)
+    mesh.setRenderer(renderer)
+
+    # --- Añadir al proyecto y refrescar ---
+    QgsProject.instance().addMapLayer(mesh)
+    mesh.triggerRepaint()
+    iface.mapCanvas().refresh()
+
 
 
 

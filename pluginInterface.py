@@ -16,6 +16,7 @@ from qgis.core import Qgis
 from . import createMeshGeometry
 from . import generateMeshElements
 from . import defineMeshOrdering
+from . import terrainFeatures
 from . import tools
 from .messages import (
     log_info,
@@ -83,14 +84,20 @@ class pluginPK5mesher:
         ################ Botón MESHING
         self.action_mallar = QAction("MESHING", self.iface.mainWindow())
         self.action_mallar.setToolTip("Generar malla del dominio")
-        self.action_mallar.triggered.connect(lambda: generateMeshElements.generateMesh(self.mesh_type))
+        self.action_mallar.triggered.connect(lambda: generateMeshElements.generateMesh(self))
         self.toolbar.addAction(self.action_mallar)
 
         ################ Botón ORDERING
         self.action_ordering = QAction("ORDERING", self.iface.mainWindow())
         self.action_ordering.setToolTip("Optimiza ordenacion de malla")
-        self.action_ordering.triggered.connect(defineMeshOrdering.getMeshConnectivity)
+        self.action_ordering.triggered.connect(lambda: defineMeshOrdering.getMeshConnectivity(self))
         self.toolbar.addAction(self.action_ordering) 
+ 
+        ################ Botón TERRAIN
+        self.action_terrain = QAction("TERRAIN", self.iface.mainWindow())
+        self.action_terrain.setToolTip("Define layers with the terrain features")
+        self.action_terrain.triggered.connect(self.openTerrainDialog)
+        self.toolbar.addAction(self.action_terrain)      
 
 
     def set_mesh_type(self, mesh_type):
@@ -121,6 +128,10 @@ class pluginPK5mesher:
             level=Qgis.Info,
             duration=2
         )
+
+
+    def openTerrainDialog(self, checked=False):
+        terrainFeatures.openTerrainDialog(self.iface)
 
 
     def unload(self):

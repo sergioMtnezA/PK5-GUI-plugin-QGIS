@@ -7,13 +7,14 @@
 ###########################################################################################
 
 from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsVectorLayer
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import math
 from collections import defaultdict
+from .generateMeshElements import generateMeshLayer, reloadAndStyleMesh
 from .reorderMatrixMethods import applyRCMreordering
 from . import tools
 from .messages import (
@@ -22,7 +23,7 @@ from .messages import (
     log_warning
 )
 
-def getMeshConnectivity():
+def getMeshConnectivity(self):
 
     # Obtener carpeta del proyecto
     project_path = QgsProject.instance().fileName()
@@ -89,14 +90,19 @@ def getMeshConnectivity():
     msg=f"Plot reordered calculus walls connectivity done"  
     log_info(msg) 
 
-    msh_path = os.path.join(project_folder, "mesh_v2.msh")
+    msh_path = os.path.join(project_folder, "mesh.msh")
     writeMeshReordered(msh_path, nodes, newElements)
     msg=f"Reordered MSH file written"  
     log_info(msg)  
 
-    # Cargar malla en QGIS
-    shp_path = os.path.join(project_folder, "mesh_v2.shp")
-    tools.showMesh(project_crs,msh_path,shp_path)      
+    # Generate mesh shp layer
+    shp_path = os.path.join(project_folder, "mesh.shp")
+    generateMeshLayer(project_crs,msh_path,shp_path)
+    
+    #reload mesh layer with zbed
+    reloadAndStyleMesh("idx",self.iface)
+    msg=f"Mesh layer added to project"   
+    log_info(msg)  
 
     QMessageBox.information(None, "ORDERING", "Mesh reordering successful\n") 
 
