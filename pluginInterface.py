@@ -13,10 +13,12 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QObject
 from qgis.core import Qgis
 
-from . import createMeshGeometry
-from . import generateMeshElements
-from . import defineMeshOrdering
+from . import domainGeometry
+from . import meshElements
+#from . import defineMeshOrdering
+from . import meshConnectivity
 from . import terrainFeatures
+from . import initialConditions
 from . import tools
 from .messages import (
     log_info,
@@ -44,7 +46,6 @@ class pluginPK5mesher:
 
 
     def initGui(self):
-
         ################ Boton tipo de malla
         self.mesh_button = QToolButton()
         if self.mesh_type == "triangle":
@@ -72,32 +73,38 @@ class pluginPK5mesher:
         ################ Botón DOMAIN
         self.action_domain = QAction("DOMAIN", self.iface.mainWindow())
         self.action_domain.setToolTip("Crear capa domain con mesh_size")
-        self.action_domain.triggered.connect(lambda: createMeshGeometry.defineDomain(self.mesh_type))
+        self.action_domain.triggered.connect(lambda: domainGeometry.defineDomain(self))
         self.toolbar.addAction(self.action_domain)   
 
         ################ Botón REFINE
         self.action_refine = QAction("REFINE", self.iface.mainWindow())
         self.action_refine.setToolTip("Generate refinement lines")
-        self.action_refine.triggered.connect(createMeshGeometry.defineRefineLines) 
+        self.action_refine.triggered.connect(domainGeometry.defineRefineLines) 
         self.toolbar.addAction(self.action_refine)             
 
         ################ Botón MESHING
         self.action_mallar = QAction("MESHING", self.iface.mainWindow())
         self.action_mallar.setToolTip("Generar malla del dominio")
-        self.action_mallar.triggered.connect(lambda: generateMeshElements.generateMesh(self))
+        self.action_mallar.triggered.connect(lambda: meshElements.generateMesh(self))
         self.toolbar.addAction(self.action_mallar)
 
         ################ Botón ORDERING
         self.action_ordering = QAction("ORDERING", self.iface.mainWindow())
-        self.action_ordering.setToolTip("Optimiza ordenacion de malla")
-        self.action_ordering.triggered.connect(lambda: defineMeshOrdering.getMeshConnectivity(self))
+        self.action_ordering.setToolTip("Optimize mesh elements connectivity")
+        self.action_ordering.triggered.connect(self.openOrderingDialog)
         self.toolbar.addAction(self.action_ordering) 
  
         ################ Botón TERRAIN
         self.action_terrain = QAction("TERRAIN", self.iface.mainWindow())
         self.action_terrain.setToolTip("Define layers with the terrain features")
         self.action_terrain.triggered.connect(self.openTerrainDialog)
-        self.toolbar.addAction(self.action_terrain)      
+        self.toolbar.addAction(self.action_terrain)
+
+        ################ Botón INITIAL
+        self.action_initial = QAction("INITIAL", self.iface.mainWindow())
+        self.action_initial.setToolTip("Define layers with the initial conditions")
+        self.action_initial.triggered.connect(self.openInitialDialog)
+        self.toolbar.addAction(self.action_initial)    
 
 
     def set_mesh_type(self, mesh_type):
@@ -130,8 +137,16 @@ class pluginPK5mesher:
         )
 
 
+    def openOrderingDialog(self, checked=False):
+        meshConnectivity.openOrderingDialog(self.iface)
+
+
     def openTerrainDialog(self, checked=False):
         terrainFeatures.openTerrainDialog(self.iface)
+
+
+    def openInitialDialog(self, checked=False):
+        initialConditions.openInitialDialog(self.iface)        
 
 
     def unload(self):

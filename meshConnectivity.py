@@ -6,15 +6,22 @@
 
 ###########################################################################################
 
-from qgis.PyQt.QtWidgets import QMessageBox
+from qgis.PyQt.QtWidgets import (
+    QMessageBox,
+    QInputDialog,
+    QDialog, QVBoxLayout, QPushButton,
+    QCheckBox, QLabel
+)
 from qgis.core import QgsProject, QgsVectorLayer
 import os
+import sys
+import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import math
 from collections import defaultdict
-from .generateMeshElements import generateMeshLayer, reloadAndStyleMesh
+from .meshElements import generateMeshLayer
 from .reorderMatrixMethods import applyRCMreordering
 from . import tools
 from .messages import (
@@ -23,8 +30,57 @@ from .messages import (
     log_warning
 )
 
-def getMeshConnectivity(self):
 
+def openOrderingDialog(iface):
+    dlg = orderingDialog(iface, iface.mainWindow())
+    dlg.exec()
+
+
+class orderingDialog(QDialog):
+
+    def __init__(self, iface, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Mesh connectivity")
+        self.iface = iface
+
+        self.nodes = None
+        self.elements = None
+        self.neighbors = None
+
+        layout = QVBoxLayout(self)
+
+        # Get mesh connectivity
+        btn1 = QPushButton("Compute mesh connectivity")
+        btn1.clicked.connect(self.on_get_mesh_connectivity)
+        layout.addWidget(btn1)
+
+        # Optimize mesh connectivity
+        btn2 = QPushButton("Optimize mesh connectivity")
+        btn2.clicked.connect(self.on_optimize_mesh_connectivity)
+        layout.addWidget(btn2)
+
+        # Plot mesh connectivity
+        btn3 = QPushButton("Plot mesh connectivity")
+        btn3.clicked.connect(self.on_plot_mesh_connectivity)
+        layout.addWidget(btn3)        
+
+
+    # Get connectivity actions
+    def on_get_mesh_connectivity(self):
+        self.nodes, self.elements, self.neighbors = getMeshConnectivity()
+        reloadAndStyleMesh("idx",self.iface)
+
+    # Optimize connectivity actions
+    def on_optimize_mesh_connectivity(self):
+        self.elements, self.neighbors = optimizeMeshConnectivity(self.nodes,self.elements,self.neighbors)
+        reloadAndStyleMesh("idx",self.iface)
+
+    # Plot connectivity actions
+    def on_plot_mesh_connectivity(self):
+        plotMeshConnectivity(self.elements,self.neighbors)
+
+
+def getMeshConnectivity():
     # Obtener carpeta del proyecto
     project_path = QgsProject.instance().fileName()
     if not project_path:
@@ -45,51 +101,34 @@ def getMeshConnectivity(self):
     msg=f"Number of volume elements: {len(elements)}"   
     log_info(msg)      
 
-    # Compute conectivity matrix
-    Cmatrix = computeConnectivityMatrix(elements)
-    msg=f"Connectivity matrix created"   
-    log_info(msg)
-
-    # Show conectivity matrix      
-    output_file = os.path.join(project_folder, "cellConnectivity.png")
-    plotConnectivityMatrix(Cmatrix, output_file)
-    msg=f"Plot connectivity matrix done"   
-    log_info(msg)
-
-    QMessageBox.information(None, "ORDERING", "Mesh connectivity computed\n")  
-
-
     # Create calclulus wall list
     neighbors = buildNeighbornCells(elements)
     msg=f"Neighbor cells list created: {len(neighbors)} pairs"  
     log_info(msg)     
 
-    output_file = os.path.join(project_folder, "wallConnectivity.png")
-    plotNeighbornConnectivity(neighbors, output_file)
-    msg=f"Plot calculus walls connectivity done"  
-    log_info(msg)
+    #QMessageBox.information(None, "ORDERING", "Mesh connectivity computed\n")  
 
-    QMessageBox.information(None, "ORDERING", "Wall connectivity computed\n")
+    return nodes, elements, neighbors
 
+
+def optimizeMeshConnectivity(nodes,elements,neighbors):
+    # Obtener carpeta del proyecto
+    project_path = QgsProject.instance().fileName()
+    project_folder = os.path.dirname(project_path)
+
+    # Tomar CRS del proyecto
+    project_crs = QgsProject.instance().crs() 
 
     # Apply RCM for mesh reordering
     newElements = applyRCMreordering(elements,neighbors)
     msg=f"RCM reordering applied"   
     log_info(msg) 
 
-    newCmatrix = computeConnectivityMatrix(newElements)
-    output_file = os.path.join(project_folder, "cellConnectivityReordered.png")
-    plotConnectivityMatrix(newCmatrix, output_file)
-
     newNeighbors = buildNeighbornCells(newElements)
     msg=f"Reordered calculus walls created: {len(newNeighbors)} walls"  
     log_info(msg)         
 
-    output_file = os.path.join(project_folder, "wallConnectivityReordered.png")
-    plotNeighbornConnectivity(newNeighbors, output_file) 
-    msg=f"Plot reordered calculus walls connectivity done"  
-    log_info(msg) 
-
+    # Write msh file
     msh_path = os.path.join(project_folder, "mesh.msh")
     writeMeshReordered(msh_path, nodes, newElements)
     msg=f"Reordered MSH file written"  
@@ -98,13 +137,39 @@ def getMeshConnectivity(self):
     # Generate mesh shp layer
     shp_path = os.path.join(project_folder, "mesh.shp")
     generateMeshLayer(project_crs,msh_path,shp_path)
-    
-    #reload mesh layer with zbed
-    reloadAndStyleMesh("idx",self.iface)
-    msg=f"Mesh layer added to project"   
-    log_info(msg)  
+    msg=f"Ordered mesh layer generated"   
+    log_info(msg)      
 
-    QMessageBox.information(None, "ORDERING", "Mesh reordering successful\n") 
+    #QMessageBox.information(None, "ORDERING", "Mesh reordering successful\n") 
+
+    return newElements, newNeighbors
+
+
+def plotMeshConnectivity(elements,neighbors):
+    # Obtener carpeta del proyecto
+    project_path = QgsProject.instance().fileName()
+    project_folder = os.path.dirname(project_path)    
+
+    # Compute conectivity matrix
+    Cmatrix = computeConnectivityMatrix(elements)
+    msg=f"Connectivity matrix created"   
+    log_info(msg)
+    
+    # Show cell conectivity matrix      
+    cell_png = os.path.join(project_folder, "cellConnectivity.png")
+    plotConnectivityMatrix(Cmatrix, cell_png)
+    msg=f"Plot connectivity matrix done"   
+    log_info(msg)
+
+    # Show wall conectivity 
+    wall_png = os.path.join(project_folder, "wallConnectivity.png")
+    plotNeighbornConnectivity(neighbors, wall_png)
+    msg=f"Plot calculus walls connectivity done"  
+    log_info(msg)
+
+    # Open images
+    openImage(cell_png)
+    openImage(wall_png)
 
 
 def readGmshFile(filename):
@@ -195,35 +260,6 @@ def computeConnectivityMatrix(elements):
             if len(set(elements[i]) & set(elements[j])) >= 2:
                 C[j, i] = 1
     return C
-
-
-def plotConnectivityMatrix(matrix, output_file):
-    """
-    Saves the connectivity matrix as an image file.
-    """
-    N = matrix.shape[0]
-    #size = max(10, N/100)   # escala automática
-    size=10
-    plt.figure(figsize=(size, size))
-
-    plt.imshow(
-        matrix, 
-        cmap='gray_r', 
-        origin='lower',
-        interpolation='nearest',
-        vmin=0,vmax=1
-    )
-
-    x0=np.array([0,N-1])
-    y0=np.array([0,N-1])
-    plt.plot(x0,y0,color='red',linewidth=1)
-    
-    plt.title("Connectivity Matrix")
-    plt.colorbar(label='Connection')
-    plt.tight_layout()
-    
-    plt.savefig(output_file, dpi=300)
-    plt.close()  # close the figure to free memory
 
 
 def buildWalls(elements):
@@ -318,36 +354,6 @@ def writeNeighbornCells(neighbors,output_file):
             f.write(f"{w['n1']} {w['n2']} {w['c1']} {w['c2']} {w['iw1']} {w['iw2']}\n") 
   
 
-def plotNeighbornConnectivity(neighbors, output_file):
-    """
-    Plot idWall vs cell1 and cell2, coloring points by idWall.
-    """
-    colormap="jet"
-    point_size=12
-
-    idwalls = np.arange(len(neighbors))
-    cell1 = np.array([w["c1"] for w in neighbors])
-    cell2 = np.array([w["c2"] for w in neighbors])
-
-    norm = plt.Normalize(vmin=idwalls.min(), vmax=idwalls.max())
-    cmap = cm.get_cmap(colormap)
-
-    plt.figure(figsize=(10,10))
-    plt.scatter(idwalls, cell1, c=idwalls, cmap=cmap, norm=norm, s=point_size, label="cell-1", marker='+',linewidths=0.5)
-    plt.scatter(idwalls, cell2, c=idwalls, cmap=cmap, norm=norm, s=point_size, label="cell-2", marker='x',linewidths=0.5)
-
-    plt.xlabel("Wall ID")
-    plt.ylabel("Cell index")
-    plt.title("Wall ID vs Cells (colored by Wall ID)")
-    plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), label="Wall ID")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-
-    plt.savefig(output_file, dpi=300)
-    plt.close()
-
-
 def writeMeshReordered(filename, nodes, elements):
     """
     Write a GMSH 2.2 ASCII .msh file
@@ -401,4 +407,109 @@ def writeMeshReordered(filename, nodes, elements):
             )
 
         f.write("$EndElements\n")
+
+
+def reloadAndStyleMesh(var,iface):
+    tools.remove_layer_by_name("mesh")
+
+    project_folder = os.path.dirname(QgsProject.instance().fileName())
+    mesh_path = os.path.join(project_folder, "mesh.shp")
+    mesh = QgsVectorLayer(mesh_path, "mesh", "ogr")
+    if not mesh.isValid():
+        log_error("Domain mesh not found or invalid")
+        return
+
+    if var not in [f.name() for f in mesh.fields()]:
+        raise RuntimeError(f"Field {var} does not exist in mesh")
+
+    # --- Renderer graduado ---
+    #renderer = tools.createGraduatedRenderer(mesh, var, n_classes=9)
+    renderer = tools.createContinuousRenderer(mesh, var, n_classes=12)
+    #ramp_name="Terrain_color"
+    #xml_style_path=r"C:\Users\marti\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\gmshMesherPK5\styles\terrain_qgis.xml"
+    #renderer = tools.createContinuousRenderer(mesh, var, xml_style_path, ramp_name, n_classes=9)
+    mesh.setRenderer(renderer)
+
+    # --- Añadir al proyecto y refrescar ---
+    QgsProject.instance().addMapLayer(mesh)
+    mesh.triggerRepaint()
+    iface.mapCanvas().refresh()
+
+
+def plotConnectivityMatrix(matrix, output_file):
+    """
+    Saves the connectivity matrix as an image file.
+    """
+    N = matrix.shape[0]
+    #size = max(10, N/100)   # escala automática
+    size=10
+    plt.figure(figsize=(size, size))
+
+    plt.imshow(
+        matrix, 
+        cmap='gray_r', 
+        origin='lower',
+        interpolation='nearest',
+        vmin=0,vmax=1
+    )
+
+    x0=np.array([0,N-1])
+    y0=np.array([0,N-1])
+    plt.plot(x0,y0,color='red',linewidth=1)
+    
+    plt.title("Connectivity Matrix")
+    plt.colorbar(label='Connection')
+    plt.tight_layout()
+    
+    plt.savefig(output_file, dpi=300)
+    plt.close()  # close the figure to free memory
+
+
+def plotNeighbornConnectivity(neighbors, output_file):
+    """
+    Plot idWall vs cell1 and cell2, coloring points by idWall.
+    """
+    colormap="jet"
+    point_size=12
+
+    idwalls = np.arange(len(neighbors))
+    cell1 = np.array([w["c1"] for w in neighbors])
+    cell2 = np.array([w["c2"] for w in neighbors])
+
+    norm = plt.Normalize(vmin=idwalls.min(), vmax=idwalls.max())
+    cmap = cm.get_cmap(colormap)
+
+    plt.figure(figsize=(10,10))
+    plt.scatter(idwalls, cell1, c=idwalls, cmap=cmap, norm=norm, s=point_size, label="cell-1", marker='+',linewidths=0.5)
+    plt.scatter(idwalls, cell2, c=idwalls, cmap=cmap, norm=norm, s=point_size, label="cell-2", marker='x',linewidths=0.5)
+
+    plt.xlabel("Wall ID")
+    plt.ylabel("Cell index")
+    plt.title("Wall ID vs Cells (colored by Wall ID)")
+    plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), label="Wall ID")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    plt.savefig(output_file, dpi=300)
+    plt.close()
+
+
+def openImage(path):
+    if not os.path.exists(path):
+        return
+
+    if sys.platform.startswith("win"):
+        # Windows
+        os.startfile(path)
+
+    elif sys.platform.startswith("linux"):
+        # Linux
+        subprocess.Popen(["xdg-open", path])
+
+    elif sys.platform.startswith("darwin"):
+        # macOS (por si acaso)
+        subprocess.Popen(["open", path])
+
+
 

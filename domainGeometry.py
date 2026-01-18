@@ -10,22 +10,27 @@ from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer, QgsField, QgsFields, QgsVectorFileWriter, QgsMeshLayer, QgsPointXY, QgsFeature, QgsGeometry
 from PyQt5.QtCore import QVariant
 import os
+from . import tools
 from .messages import (
     log_info,
     log_error,
     log_warning
 )
 
-def defineDomain(mesh_type):
+def defineDomain(self):
+    mesh_type = self.mesh_type
+    iface = self.iface
+
     if mesh_type == "triangle":
-        defineDomainPolygonTriangle()
+        defineDomainPolygonTriangle(iface)
     elif mesh_type == "quad":
-        defineDomainPolygonQuad()
+        defineDomainPolygonQuad(iface)
     else:
-        raise ValueError(f"Tipo de malla no soportado: {mesh_type}")
+        raise ValueError(f"Non-supported mesh type: {mesh_type}")
 
 
-def defineDomainPolygonTriangle():
+
+def defineDomainPolygonTriangle(iface):
     # Obtener carpeta del proyecto
     project_path = QgsProject.instance().fileName()
     if not project_path:
@@ -70,6 +75,7 @@ def defineDomainPolygonTriangle():
     QgsProject.instance().addMapLayer(
         QgsVectorLayer(shp_path, "domain", "ogr")
     )
+    reloadAndStyleDomain(iface)
 
     msg=f"Domain layer created for triangle mesh"    
     log_info(msg)
@@ -130,7 +136,7 @@ def defineRefineLines():
     #QMessageBox.information(None, "REFINELINES", f"Capa refineLines creada en {shp_path}")   
 
 
-def defineDomainPolygonQuad():
+def defineDomainPolygonQuad(iface):
     # Obtener carpeta del proyecto
     project_path = QgsProject.instance().fileName()
     if not project_path:
@@ -178,7 +184,32 @@ def defineDomainPolygonQuad():
     QgsProject.instance().addMapLayer(
         QgsVectorLayer(shp_path, "domain", "ogr")
     )
+    reloadAndStyleDomain(iface)    
     
     msg=f"Domain layer created for quad mesh"    
     log_info(msg)
     #QMessageBox.information(None, "DOMAIN", f"Capa domain creada en {shp_path}")
+
+
+
+
+def reloadAndStyleDomain(iface):
+    tools.remove_layer_by_name("domain")
+
+    project_folder = os.path.dirname(QgsProject.instance().fileName())
+    domain_path = os.path.join(project_folder, "domain.shp")
+    domain = QgsVectorLayer(domain_path, "domain", "ogr")
+    if not domain.isValid():
+        log_error("Domain layer not found or invalid")
+        return
+
+    # --- Renderer ---
+    fill_color = None
+    edge_color = "100,100,100"
+    renderer = tools.createSimpleRenderer(fill_color, edge_color, opacity=0.0)
+    domain.setRenderer(renderer)
+
+    # --- Añadir al proyecto y refrescar ---
+    QgsProject.instance().addMapLayer(domain)
+    domain.triggerRepaint()
+    iface.mapCanvas().refresh()

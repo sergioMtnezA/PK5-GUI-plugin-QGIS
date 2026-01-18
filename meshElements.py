@@ -90,7 +90,7 @@ def generateMesh(self):
 
     msg=f"Mesh MSH file generated correctly"   
     log_info(msg)   
-    QMessageBox.information(None, "MESHING", "Mesh MSH file generated correctly")
+    #QMessageBox.information(None, "MESHING", "Mesh MSH file generated correctly")
     
     # Generate mesh shp layer
     shp_path = os.path.join(project_folder, "mesh.shp")
@@ -98,7 +98,7 @@ def generateMesh(self):
     
     #reload mesh layer with zbed
     reloadAndStyleMesh("idx",self.iface)
-    msg=f"Mesh layer added to project"   
+    msg=f"Mesh shape layer added to project"   
     log_info(msg)     
 
 
@@ -401,11 +401,7 @@ def generateMeshLayer(project_crs,msh_path,shp_path):
 
 
 def reloadAndStyleMesh(var,iface):
-    """
-    Recarga la capa de malla y aplica simbología graduada por zbed
-    """
     tools.remove_layer_by_name("mesh")
-    tools.remove_layer_by_name("mesh_v2")
 
     project_folder = os.path.dirname(QgsProject.instance().fileName())
     mesh_path = os.path.join(project_folder, "mesh.shp")
@@ -417,12 +413,10 @@ def reloadAndStyleMesh(var,iface):
     if var not in [f.name() for f in mesh.fields()]:
         raise RuntimeError(f"Field {var} does not exist in mesh")
 
-    # --- Renderer graduado ---
-    #renderer = tools.createGraduatedRenderer(mesh, var, n_classes=9)
-    renderer = tools.createContinuousRenderer(mesh, var, n_classes=9)
-    #ramp_name="Terrain_color"
-    #xml_style_path=r"C:\Users\marti\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\gmshMesherPK5\styles\terrain_qgis.xml"
-    #renderer = tools.createContinuousRenderer(mesh, var, xml_style_path, ramp_name, n_classes=9)
+    # --- Renderer ---
+    fill_color = None
+    edge_color = "255,255,255"
+    renderer = tools.createSimpleRenderer(fill_color, edge_color, opacity=0.4)
     mesh.setRenderer(renderer)
 
     # --- Añadir al proyecto y refrescar ---
