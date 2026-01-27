@@ -75,7 +75,7 @@ def defineDomainPolygonTriangle(iface):
     QgsProject.instance().addMapLayer(
         QgsVectorLayer(shp_path, "domain", "ogr")
     )
-    reloadAndStyleDomain(iface)
+    reloadAndStyleDomainTriangle(iface)
 
     msg=f"Domain layer created for triangle mesh"    
     log_info(msg)
@@ -184,16 +184,14 @@ def defineDomainPolygonQuad(iface):
     QgsProject.instance().addMapLayer(
         QgsVectorLayer(shp_path, "domain", "ogr")
     )
-    reloadAndStyleDomain(iface)    
+    reloadAndStyleDomainQuad(iface)    
     
     msg=f"Domain layer created for quad mesh"    
     log_info(msg)
     #QMessageBox.information(None, "DOMAIN", f"Capa domain creada en {shp_path}")
 
 
-
-
-def reloadAndStyleDomain(iface):
+def reloadAndStyleDomainTriangle(iface):
     tools.remove_layer_by_name("domain")
 
     project_folder = os.path.dirname(QgsProject.instance().fileName())
@@ -205,8 +203,30 @@ def reloadAndStyleDomain(iface):
 
     # --- Renderer ---
     fill_color = None
-    edge_color = "100,100,100"
+    edge_color = "0,0,0"
     renderer = tools.createSimpleRenderer(fill_color, edge_color, opacity=1.0)
+    domain.setRenderer(renderer)
+
+    # --- Añadir al proyecto y refrescar ---
+    QgsProject.instance().addMapLayer(domain)
+    domain.triggerRepaint()
+    iface.mapCanvas().refresh()
+
+
+def reloadAndStyleDomainQuad(iface):
+    tools.remove_layer_by_name("domain")
+
+    project_folder = os.path.dirname(QgsProject.instance().fileName())
+    domain_path = os.path.join(project_folder, "domain.shp")
+    domain = QgsVectorLayer(domain_path, "domain", "ogr")
+    if not domain.isValid():
+        log_error("Domain layer not found or invalid")
+        return
+
+    # --- Renderer ---
+    fill_color = None
+    edge_color = "0,0,0"
+    renderer = tools.createSimpleLineRenderer(edge_color, width=0.4, opacity=1.0)
     domain.setRenderer(renderer)
 
     # --- Añadir al proyecto y refrescar ---

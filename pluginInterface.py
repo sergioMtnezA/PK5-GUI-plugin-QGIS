@@ -11,20 +11,26 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QObject
-from qgis.core import Qgis
-
+from qgis.core import (
+    Qgis,QgsApplication
+)
 from . import domainGeometry
 from . import meshElements
-#from . import defineMeshOrdering
 from . import meshConnectivity
 from . import terrainFeatures
 from . import initialConditions
+from . import boundaryConditions
+from . import generatePK5files
 from . import tools
 from .messages import (
     log_info,
     log_error,
     log_warning
 )
+
+
+#from qgis.utils import reloadPlugin
+#reloadPlugin("gmshMesherPK5")
 
 
 class pluginPK5mesher:
@@ -36,9 +42,10 @@ class pluginPK5mesher:
         self.toolbar = self.iface.addToolBar("PeKa2D-v5 GUI")
         self.toolbar.setObjectName("PeKa2D-v5 GUI")
        
-        # Tipo de malla inicial
+        # Default mesh type
         self.mesh_type = "triangle"  # valor por defecto
 
+        # Initial message
         msg = f"PeKa2D-v5 Graphical User Interface (GUI)"   
         log_info(msg)
         msg = f"Sergio Martínez-Aranda 2024. License CC BY-NC-SA 4.0\n"    
@@ -104,7 +111,19 @@ class pluginPK5mesher:
         self.action_initial = QAction("INITIAL", self.iface.mainWindow())
         self.action_initial.setToolTip("Define layers with the initial conditions")
         self.action_initial.triggered.connect(self.openInitialDialog)
-        self.toolbar.addAction(self.action_initial)    
+        self.toolbar.addAction(self.action_initial)
+
+        ################ Botón BOUNDS
+        self.action_bounds = QAction("BOUNDS", self.iface.mainWindow())
+        self.action_bounds.setToolTip("Define open boundary conditions")
+        self.action_bounds.triggered.connect(self.openBoundaryDialog)
+        self.toolbar.addAction(self.action_bounds)
+
+        ################ Botón EXPORT
+        self.action_export = QAction("EXPORT", self.iface.mainWindow())
+        self.action_export.setToolTip("Define open boundary conditions")
+        self.action_export.triggered.connect(self.openExportDialog)
+        self.toolbar.addAction(self.action_export)              
 
 
     def set_mesh_type(self, mesh_type):
@@ -161,7 +180,15 @@ class pluginPK5mesher:
 
 
     def openInitialDialog(self, checked=False):
-        initialConditions.openInitialDialog(self.iface)        
+        initialConditions.openInitialDialog(self.iface)
+
+
+    def openBoundaryDialog(self, checked=False):
+        boundaryConditions.openBoundaryDialog(self.iface)
+
+
+    def openExportDialog(self, checked=False):
+        generatePK5files.openExportDialog(self.iface)
 
 
     def unload(self):

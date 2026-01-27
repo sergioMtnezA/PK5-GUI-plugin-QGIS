@@ -44,8 +44,8 @@ def wait_for_shapefile(shp_path, timeout=3):
         time.sleep(0.1)  # esperar 100 ms
     return False   
 
-def createSimpleLineRenderer(edge_color, width=0.8, opacity=1.0):
 
+def createSimpleLineRenderer(edge_color, width=0.4, opacity=1.0):
     symbol = QgsLineSymbol.createSimple({
         "color": edge_color,
         "width": str(width)
@@ -59,13 +59,12 @@ def createSimpleLineRenderer(edge_color, width=0.8, opacity=1.0):
 
 
 def createSimpleRenderer(fill_color, edge_color, opacity=1.0):
-
     # Crear símbolo simple con bordes blancos
     if fill_color is not None:
         symbol = QgsFillSymbol.createSimple({
             "color": fill_color,  # Color de relleno (gris claro)
             "outline_color": edge_color,  # Color del borde
-            "outline_width": "0.2",  # Ancho del borde
+            "outline_width": "0.4",  # Ancho del borde
             "style": "solid"  # Estilo sólido
         })
 
@@ -75,15 +74,14 @@ def createSimpleRenderer(fill_color, edge_color, opacity=1.0):
     else:
         symbol = QgsFillSymbol.createSimple({
             "outline_color": edge_color,  # Color del borde
-            "outline_width": "0.2",  # Ancho del borde
-            "style": "no"  # Estilo sólido
+            "outline_width": "0.4",  # Ancho del borde
+            "style": "no"
         })        
     
     # Renderizador de símbolo único
     renderer = QgsSingleSymbolRenderer(symbol)
     
     return renderer
-
 
 
 def createGraduatedRenderer(layer, field_name, n_classes=9):

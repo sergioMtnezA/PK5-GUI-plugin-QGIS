@@ -320,14 +320,15 @@ def generateDomainQuadGeo(domain, geo_path):
 
 
 def generateMeshFromGeo(geo_path, msh_path):
-    #gmsh_exe = r"C:\Users\marti\Documents\gmsh\gmsh.exe"
-    gmsh_exe = shutil.which("gmsh")
-    if gmsh_exe is None:
-        raise RuntimeError(
-            "Gmsh is not installed.\n"
-        )
+    # WIN systems -------------------------------------
+    gmsh_exe = r"C:\Users\marti\Documents\gmsh\gmsh.exe"
+    # Linux-based systems -----------------------------
+    #gmsh_exe = shutil.which("gmsh")
+    #if gmsh_exe is None:
+    #    raise RuntimeError(
+    #        "Gmsh is not installed.\n"
+    #    )
 
-    
     cmd = [
         gmsh_exe, 
         geo_path, 
