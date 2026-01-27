@@ -115,15 +115,30 @@ class pluginPK5mesher:
             self.action_domain.setVisible(True)
             self.action_refine.setVisible(True)
             self.action_mallar.setVisible(True)
+            self.action_ordering.setVisible(True)
+            self.action_terrain.setVisible(True)
+            self.action_initial.setVisible(True)
         elif self.mesh_type == "quad":
             self.mesh_button.setText("QUAD")
             self.action_domain.setVisible(True)
             self.action_refine.setVisible(False)
             self.action_mallar.setVisible(True)
+            self.action_ordering.setVisible(True)
+            self.action_terrain.setVisible(True)
+            self.action_initial.setVisible(True)            
 
+        # Remove geometry layer
         tools.remove_layer_by_name("domain")
         tools.remove_layer_by_name("refineLines")
+        # Remove mesh
         tools.remove_layer_by_name("mesh")
+        #Remove terrain features layer
+        tools.remove_layer_by_name("terrainZ")
+        tools.remove_layer_by_name("nManning")
+        #Remove initial flow layer
+        tools.remove_layer_by_name("flowH")
+        tools.remove_layer_by_name("flowVEL")
+        tools.remove_layer_by_name("flowPhi")
 
         msg=f"Selected mesh type: {mesh_type}"    
         log_info(msg)

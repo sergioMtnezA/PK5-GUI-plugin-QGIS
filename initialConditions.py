@@ -34,7 +34,8 @@ from qgis.gui import (
 )
 from PyQt5.QtCore import (
     Qt,
-    QVariant
+    QVariant,
+    QSettings
 )
 from PyQt5.QtWidgets import QSpinBox
 from PyQt5.QtGui import QIntValidator
@@ -58,8 +59,6 @@ class initialDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Initial Conditions")
         self.iface = iface
-
-        self.n_sediments = 1  #default
         
         layout = QVBoxLayout(self)
 
@@ -127,7 +126,11 @@ class initialDialog(QDialog):
         self.btn_spin3 = QSpinBox()
         self.btn_spin3.setMinimum(1)
         self.btn_spin3.setMaximum(50)
-        self.btn_spin3.setValue(self.n_sediments)
+
+        # Set selected value
+        settings = QSettings()
+        n_sediments = settings.value("pk5settings/n_sediments", 1, type=int)
+        self.btn_spin3.setValue(n_sediments)        
         self.btn_spin3.valueChanged.connect(self.on_nsediments_changed)
         layout.addWidget(QLabel("Number of sediment/layers:"))
         layout.addWidget(self.btn_spin3)
@@ -202,12 +205,15 @@ class initialDialog(QDialog):
 
     # Sediment concentration actions
     def on_nsediments_changed(self, value):
-        self.n_sediments = value
+        settings = QSettings()
+        settings.setValue("pk5settings/n_sediments", value)
 
     def on_create_sediment_concentratrion_layer(self):
         layer_name = "flowPhi"
         field_name = "phi"
-        createFlowMultiScalarLayer(layer_name,field_name,self.n_sediments)
+        settings = QSettings()
+        n_sediments = settings.value("pk5settings/n_sediments", 1, type=int)        
+        createFlowMultiScalarLayer(layer_name,field_name,n_sediments)
 
         fill_color = "255, 102, 255"
         edge_color = "255, 102, 255"        
@@ -216,7 +222,9 @@ class initialDialog(QDialog):
     def on_add_sediment_concentratrion(self):
         layer_name = "flowPhi"
         field_name = "phi"
-        addMultiScalarToMesh(layer_name,field_name,self.n_sediments)
+        settings = QSettings()
+        n_sediments = settings.value("pk5settings/n_sediments", 1, type=int)           
+        addMultiScalarToMesh(layer_name,field_name,n_sediments)
 
         reloadAndStyleMesh("phi1",self.iface)
 

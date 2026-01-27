@@ -15,6 +15,7 @@ from qgis.core import (
 )
 from PyQt5.QtCore import QVariant
 import os
+import shutil
 import subprocess
 import meshio
 from . import tools
@@ -319,7 +320,14 @@ def generateDomainQuadGeo(domain, geo_path):
 
 
 def generateMeshFromGeo(geo_path, msh_path):
-    gmsh_exe = r"C:\Users\marti\Documents\gmsh\gmsh.exe"
+    #gmsh_exe = r"C:\Users\marti\Documents\gmsh\gmsh.exe"
+    gmsh_exe = shutil.which("gmsh")
+    if gmsh_exe is None:
+        raise RuntimeError(
+            "Gmsh is not installed.\n"
+        )
+
+    
     cmd = [
         gmsh_exe, 
         geo_path, 

@@ -151,7 +151,7 @@ def defineDomainPolygonQuad(iface):
     shp_path = os.path.join(project_folder, "domain.shp")
 
     # Crear capa lineal en memoria con CRS del proyecto
-    layer = QgsVectorLayer(f"LineString?crs={project_crs.authid()}", "domain_lines", "memory")
+    layer = QgsVectorLayer(f"LineString?crs={project_crs.authid()}", "domain", "memory")
 
     # Añadir campos number_seg y growth_ratio
     layer.dataProvider().addAttributes([
@@ -206,7 +206,7 @@ def reloadAndStyleDomain(iface):
     # --- Renderer ---
     fill_color = None
     edge_color = "100,100,100"
-    renderer = tools.createSimpleRenderer(fill_color, edge_color, opacity=0.0)
+    renderer = tools.createSimpleRenderer(fill_color, edge_color, opacity=1.0)
     domain.setRenderer(renderer)
 
     # --- Añadir al proyecto y refrescar ---

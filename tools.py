@@ -8,7 +8,7 @@
 
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsField, QgsVectorFileWriter, QgsPointXY, QgsFeature, QgsGeometry,
-    QgsSimpleFillSymbolLayer, QgsFillSymbol, QgsSingleSymbolRenderer, QgsUnitTypes,
+    QgsSimpleFillSymbolLayer, QgsFillSymbol, QgsLineSymbol, QgsSingleSymbolRenderer, QgsUnitTypes,
     QgsGraduatedSymbolRenderer, QgsStyle,
     QgsSymbol, QgsRendererRange, QgsClassificationEqualInterval
 )
@@ -42,7 +42,20 @@ def wait_for_shapefile(shp_path, timeout=3):
         if all(os.path.exists(f) for f in files):
             return True
         time.sleep(0.1)  # esperar 100 ms
-    return False        
+    return False   
+
+def createSimpleLineRenderer(edge_color, width=0.8, opacity=1.0):
+
+    symbol = QgsLineSymbol.createSimple({
+        "color": edge_color,
+        "width": str(width)
+    })
+
+    if opacity < 1.0:
+        symbol.setOpacity(opacity)
+
+    renderer = QgsSingleSymbolRenderer(symbol)
+    return renderer     
 
 
 def createSimpleRenderer(fill_color, edge_color, opacity=1.0):
