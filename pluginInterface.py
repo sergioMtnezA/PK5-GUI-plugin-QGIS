@@ -29,8 +29,8 @@ from .messages import (
 )
 
 
-#from qgis.utils import reloadPlugin
-#reloadPlugin("gmshMesherPK5")
+# from qgis.utils import reloadPlugin
+# reloadPlugin("gmshMesherPK5")
 
 
 class pluginPK5mesher:
@@ -188,7 +188,7 @@ class pluginPK5mesher:
 
 
     def openExportDialog(self, checked=False):
-        generatePK5files.openExportDialog(self.iface)
+        generatePK5files.openExportDialog(self.iface, self.mesh_type)
 
 
     def unload(self):
