@@ -47,6 +47,7 @@ from .messages import (
     log_warning
 )
 
+SETTINGS_GROUP = "gmshMesherPK5/InitialDialog"
 
 def openInitialDialog(iface):
     dlg = initialDialog(iface, iface.mainWindow())
@@ -59,6 +60,12 @@ class initialDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Initial Conditions")
         self.iface = iface
+
+        # ==========================
+        # Settings
+        # ==========================
+        self.settings = QSettings()
+        self.settings_group = SETTINGS_GROUP
         
         layout = QVBoxLayout(self)
 
@@ -128,8 +135,10 @@ class initialDialog(QDialog):
         self.btn_spin3.setMaximum(50)
 
         # Set selected value
-        settings = QSettings()
-        n_sediments = settings.value("pk5settings/n_sediments", 1, type=int)
+        self.settings.beginGroup(self.settings_group)
+        n_sediments = self.settings.value("n_sediments", 1, type=int)
+        self.settings.endGroup()        
+
         self.btn_spin3.setValue(n_sediments)        
         self.btn_spin3.valueChanged.connect(self.on_nsediments_changed)
         layout.addWidget(QLabel("Number of sediment/layers:"))
@@ -205,14 +214,16 @@ class initialDialog(QDialog):
 
     # Sediment concentration actions
     def on_nsediments_changed(self, value):
-        settings = QSettings()
-        settings.setValue("pk5settings/n_sediments", value)
+        self.settings.beginGroup(self.settings_group)
+        self.settings.setValue("n_sediments", value)
+        self.settings.endGroup()
 
     def on_create_sediment_concentratrion_layer(self):
         layer_name = "flowPhi"
         field_name = "phi"
-        settings = QSettings()
-        n_sediments = settings.value("pk5settings/n_sediments", 1, type=int)        
+        self.settings.beginGroup(self.settings_group)
+        n_sediments = self.settings.value("n_sediments", 1, type=int)
+        self.settings.endGroup()          
         createFlowMultiScalarLayer(layer_name,field_name,n_sediments)
 
         fill_color = "255, 102, 255"
@@ -222,8 +233,9 @@ class initialDialog(QDialog):
     def on_add_sediment_concentratrion(self):
         layer_name = "flowPhi"
         field_name = "phi"
-        settings = QSettings()
-        n_sediments = settings.value("pk5settings/n_sediments", 1, type=int)           
+        self.settings.beginGroup(self.settings_group)
+        n_sediments = self.settings.value("n_sediments", 1, type=int)
+        self.settings.endGroup()               
         addMultiScalarToMesh(layer_name,field_name,n_sediments)
 
         reloadAndStyleMesh("phi1",self.iface)

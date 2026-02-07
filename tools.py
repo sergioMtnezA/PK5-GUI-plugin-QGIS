@@ -22,9 +22,12 @@ import meshio
 
 def remove_layer_by_name(layer_name):
     project = QgsProject.instance()
-    for layer in project.mapLayers().values():
-        if layer.name() == layer_name:
-            project.removeMapLayer(layer.id())        
+    #for layer in project.mapLayers().values():
+    #    if layer.name() == layer_name:
+    #        project.removeMapLayer(layer.id())  
+    layers = project.mapLayersByName(layer_name)
+    for layer in layers:
+        project.removeMapLayer(layer.id())  # eliminar del proyecto      
 
 
 def remove_shapefile(shp_path):
@@ -56,6 +59,24 @@ def createSimpleLineRenderer(edge_color, width=0.4, opacity=1.0):
 
     renderer = QgsSingleSymbolRenderer(symbol)
     return renderer     
+
+
+def createSimpleEmptyRenderer(edge_color, width=0.2, opacity=1.0):
+    # Crear símbolo simple con bordes blancos
+    symbol = QgsFillSymbol.createSimple({
+        "outline_color": edge_color,  # Color del borde
+        "outline_width": "0.2",  # Ancho del borde
+        "style": "no"
+    }) 
+
+    # Aplicar opacidad
+    if opacity < 1.0:
+        symbol.setOpacity(opacity)               
+    
+    # Renderizador de símbolo único
+    renderer = QgsSingleSymbolRenderer(symbol)
+    
+    return renderer
 
 
 def createSimpleRenderer(fill_color, edge_color, opacity=1.0):

@@ -135,6 +135,7 @@ def optimizeMeshConnectivity(nodes,elements,neighbors):
     log_info(msg)  
 
     # Generate mesh shp layer
+    #tools.remove_layer_by_name("mesh")
     shp_path = os.path.join(project_folder, "mesh.shp")
     generateMeshLayer(project_crs,msh_path,shp_path)
     msg=f"Ordered mesh layer generated"   

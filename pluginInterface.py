@@ -158,6 +158,9 @@ class pluginPK5mesher:
         tools.remove_layer_by_name("flowH")
         tools.remove_layer_by_name("flowVEL")
         tools.remove_layer_by_name("flowPhi")
+        #Remove boundary condition layers
+        tools.remove_layer_by_name("Outlets")
+        tools.remove_layer_by_name("Inlets")
 
         msg=f"Selected mesh type: {mesh_type}"    
         log_info(msg)
